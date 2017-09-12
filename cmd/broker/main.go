@@ -23,6 +23,9 @@ import (
 
 	"code.cloudfoundry.org/lager"
 
+	"encoding/json"
+
+	"github.com/minio/minio-service-broker/auth"
 	"github.com/pivotal-cf/brokerapi"
 )
 
@@ -46,9 +49,8 @@ const (
 
 func main() {
 	// Create logger
-	log := lager.NewLogger("minio-servicebroker")
-	log.RegisterSink(lager.NewWriterSink(os.Stderr, lager.DEBUG))
-	log.RegisterSink(lager.NewWriterSink(os.Stderr, lager.INFO))
+	log := lager.NewLogger("minio-service-broker")
+	log.RegisterSink(lager.NewWriterSink(os.Stdout, lager.DEBUG))
 
 	// Ensure username and password are present
 	username := os.Getenv("SECURITY_USER_NAME")
@@ -69,6 +71,11 @@ func main() {
 		return
 	}
 
+	agentCreds := agentCredentials{}
+	err = json.Unmarshal([]byte(os.Getenv("AGENT_CREDENTIALS")), &agentCreds)
+	if err != nil {
+		log.Fatal(fmt.Sprintf("Unable to parse AGENT_CREDENTIALS %s", os.Getenv("AGENT_CREDENTIALS")), err)
+	}
 	// Setup the broker
 	broker := &MinioServiceBroker{
 		log:                log,
@@ -80,7 +87,10 @@ func main() {
 		planID:          DefaultPlanID,
 		planDescription: DefaultPlanDescription,
 		bindablePlan:    true,
-		agent:           agentClient{u: *u},
+		agent: agentClient{
+			u:     *u,
+			creds: auth.CredentialsV4{agentCreds.Identity, agentCreds.Password, "us-east-1"},
+		},
 	}
 
 	port := os.Getenv("PORT")

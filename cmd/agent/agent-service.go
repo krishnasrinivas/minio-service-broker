@@ -153,12 +153,18 @@ func getMinioConfig(instanceID string) (minioConfig, error) {
 
 // MinioServiceAgent holds the map of service name to status
 type MinioServiceAgent struct {
-	log lager.Logger
+	log   lager.Logger
+	creds auth.CredentialsV4
 	sync.Mutex
 }
 
 // CreateInstanceHandler creates an instance of minio server
 func (agent *MinioServiceAgent) CreateInstanceHandler(w http.ResponseWriter, r *http.Request) {
+	if !agent.creds.IsSigned(r) {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
 	agent.Lock()
 	defer agent.Unlock()
 
@@ -194,6 +200,11 @@ func (agent *MinioServiceAgent) CreateInstanceHandler(w http.ResponseWriter, r *
 
 // DeleteInstanceHandler kills this instance of minio server and deletes its data from disk.
 func (agent *MinioServiceAgent) DeleteInstanceHandler(w http.ResponseWriter, r *http.Request) {
+	if !agent.creds.IsSigned(r) {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
 	agent.Lock()
 	defer agent.Unlock()
 
@@ -256,6 +267,11 @@ func (agent *MinioServiceAgent) DeleteInstanceHandler(w http.ResponseWriter, r *
 
 // GetInstanceHandler returns access credentials and instance URL
 func (agent *MinioServiceAgent) GetInstanceHandler(w http.ResponseWriter, r *http.Request) {
+	if !agent.creds.IsSigned(r) {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
 	agent.Lock()
 	defer agent.Unlock()
 

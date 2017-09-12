@@ -8,7 +8,14 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+
+	"github.com/minio/minio-service-broker/auth"
 )
+
+type agentCredentials struct {
+	Identity string `json:"identity"`
+	Password string `json:"password"`
+}
 
 type instanceInfo struct {
 	AccessKey    string
@@ -18,9 +25,8 @@ type instanceInfo struct {
 }
 
 type agentClient struct {
-	u         url.URL
-	accessKey string
-	secretKey string
+	u     url.URL
+	creds auth.CredentialsV4
 }
 
 func (a agentClient) CreateInstance(instanceID string) error {
@@ -51,10 +57,10 @@ func (a agentClient) execute(method string, instanceID string) (r io.ReadCloser,
 	a.u.Path = fmt.Sprintf("/instances/%s", instanceID)
 	req, err := http.NewRequest(method, a.u.String(), nil)
 	if err != nil {
-		fmt.Println(err)
-		fmt.Println(a.u.String())
 		return nil, err
 	}
+	a.creds.Sign(req)
+
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, err

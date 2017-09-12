@@ -22,6 +22,7 @@ import (
 
 	"code.cloudfoundry.org/lager"
 	"github.com/gorilla/mux"
+	"github.com/minio/minio-service-broker/auth"
 )
 
 var log = lager.NewLogger("minio-serviceagent")
@@ -35,7 +36,13 @@ func main() {
 	// Setup the agent
 	agent := &MinioServiceAgent{
 		log: log,
+		creds: auth.CredentialsV4{
+			os.Getenv("AGENT_IDENTITY"),
+			os.Getenv("AGENT_PASSWORD"),
+			"us-east-1",
+		},
 	}
+
 	// Bring up all instances
 	if err := agent.Init(); err != nil {
 		log.Fatal("Unable to Init()", err)
